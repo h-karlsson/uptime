@@ -1,0 +1,227 @@
+openapi: 3.1.0
+info:
+  title: Uptime API
+  version: 0.1.0
+  description: |
+    API for the Uptime monitor. Authentication uses an HTTP-only `session` cookie that is set by
+    register and login, so browsers send it automatically and JavaScript never handles tokens.
+servers:
+  - url: http://localhost:8080
+    description: Local backend
+tags:
+  - name: Health
+  - name: Auth
+    description: Email-first sign in, registration, and sessions.
+
+paths:
+  /api/health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Check API and database health
+      responses:
+        '200':
+          description: The API and database are up.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+              example: { status: ok, database: up }
+        '503':
+          description: The database is unreachable.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+              example: { status: unavailable, database: down }
+
+  /api/auth/check-email:
+    post:
+      tags: [Auth]
+      operationId: checkEmail
+      summary: Check whether an email is registered
+      description: First step of the email-first flow. The client shows the password field for registered emails and the registration form otherwise.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CheckEmailRequest' }
+      responses:
+        '200':
+          description: Whether the email is registered.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CheckEmailResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: Create an account and log in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Credentials' }
+      responses:
+        '201':
+          description: Account created. The response sets the session cookie.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409':
+          description: The email is already registered.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: email is already registered }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Log in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Credentials' }
+      responses:
+        '200':
+          description: Logged in. The response sets the session cookie.
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: Unknown email or wrong password. The response doesn't say which.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: invalid email or password }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Log out
+      description: Deletes the session and clears the cookie. Succeeds even without a session.
+      responses:
+        '204':
+          description: Logged out.
+          headers:
+            Set-Cookie:
+              description: Expires the `session` cookie.
+              schema: { type: string }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      operationId: getMe
+      summary: Get the logged-in user
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: The logged-in user.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+
+  headers:
+    SessionCookie:
+      description: '`session=<token>; Path=/; Expires=<30 days>; HttpOnly; Secure; SameSite=Lax`'
+      schema: { type: string }
+
+  schemas:
+    User:
+      type: object
+      required: [id, email, createdAt]
+      properties:
+        id: { type: integer, format: int64, example: 1 }
+        email: { type: string, format: email, example: demo@uptime.io }
+        createdAt: { type: string, format: date-time }
+
+    Credentials:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          description: Trimmed and lowercased by the server.
+          example: demo@uptime.io
+        password:
+          type: string
+          minLength: 8
+          description: 8 characters to 72 bytes (the bcrypt limit).
+          example: demo1234
+
+    CheckEmailRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email: { type: string, format: email, example: demo@uptime.io }
+
+    CheckEmailResponse:
+      type: object
+      required: [registered]
+      properties:
+        registered: { type: boolean }
+
+    Health:
+      type: object
+      required: [status, database]
+      properties:
+        status: { type: string, enum: [ok, unavailable] }
+        database: { type: string, enum: [up, down] }
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable message that is safe to show to the user.
+
+  responses:
+    BadRequest:
+      description: Invalid JSON body or input that fails validation.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            invalidJson: { value: { error: 'Invalid JSON body: check syntax, field names, and field types' } }
+            invalidEmail: { value: { error: email must be a valid address } }
+            shortPassword: { value: { error: password must be at least 8 characters } }
+    Unauthorized:
+      description: No valid session cookie.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: not logged in }
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: Internal server error }

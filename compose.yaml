@@ -1,0 +1,33 @@
+# Start everything:          docker compose up -d
+# Start only some services:  docker compose up -d postgres   (dependencies start automatically)
+name: uptime
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: uptime
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d uptime"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://admin:password@postgres:5432/uptime?sslmode=disable
+    ports:
+      # Same port as a locally run backend, so the Vite dev server can proxy to either.
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

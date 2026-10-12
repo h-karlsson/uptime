@@ -1,0 +1,16 @@
+# Generates type-safe Go from the SQL in internal/store/queries. From this folder run:
+#   docker run --rm -v "${PWD}:/src" -w /src sqlc/sqlc:1.31.1 generate
+version: "2"
+sql:
+  - engine: postgresql
+    schema: migrations # reads the goose files directly and ignores their Down sections
+    queries: internal/store/queries
+    gen:
+      go:
+        package: db
+        out: internal/store/db
+        sql_package: pgx/v5
+        overrides:
+          # NOT NULL timestamps become time.Time instead of pgtype.Timestamptz.
+          - db_type: timestamptz
+            go_type: time.Time

@@ -1,0 +1,2 @@
+backend/internal/store/db/** linguist-generated=true
+frontend/src/routeTree.gen.ts linguist-generated=true
