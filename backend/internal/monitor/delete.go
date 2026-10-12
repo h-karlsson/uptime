@@ -1,10 +1,14 @@
 package monitor
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/h-karlsson/uptime/internal/auth"
+)
 
 func Delete(monitors *Service) func(*http.Request) error {
 	return func(request *http.Request) error {
-		userID, err := currentUserID(request)
+		userID, err := auth.CurrentUserID(request.Context())
 		if err != nil {
 			return err
 		}

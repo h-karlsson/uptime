@@ -14,6 +14,8 @@ tags:
     description: Email-first sign in, registration, and sessions.
   - name: Monitors
     description: The logged-in user's monitors. Other users' monitors respond 404.
+  - name: Stats
+    description: Check history of the logged-in user's monitors. Other users' monitors respond 404.
 
 paths:
   /api/health:
@@ -248,6 +250,84 @@ paths:
         '404': { $ref: '#/components/responses/MonitorNotFound' }
         '500': { $ref: '#/components/responses/InternalServerError' }
 
+  /api/monitors/{id}/stats:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+    get:
+      tags: [Stats]
+      operationId: getMonitorStats
+      summary: Uptime and response times over a range
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: range
+          in: query
+          required: false
+          schema: { type: string, enum: [24h, 7d, 30d], default: 24h }
+      responses:
+        '200':
+          description: Statistics for the range, with response times grouped into buckets (15 min for 24h, 2 h for 7d, 6 h for 30d).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonitorStats' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/MonitorNotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+
+  /api/monitors/{id}/days:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+    get:
+      tags: [Stats]
+      operationId: listMonitorDays
+      summary: Uptime per day
+      description: The last 30 UTC days, oldest first. Days without checks are left out.
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Uptime per day.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/UptimeDay' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/MonitorNotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+
+  /api/monitors/{id}/incidents:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+    get:
+      tags: [Stats]
+      operationId: listMonitorIncidents
+      summary: Recent incidents
+      description: The 20 most recent incidents, newest first.
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Recent incidents.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Incident' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/MonitorNotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+
 components:
   securitySchemes:
     sessionCookie:
@@ -346,6 +426,56 @@ components:
         timeoutMs: { type: integer, minimum: 1000, maximum: 30000, example: 10000 }
         expectedStatus: { type: integer, minimum: 100, maximum: 599, example: 200 }
         enabled: { type: boolean, example: true }
+
+    MonitorStats:
+      type: object
+      required: [range, checks, uptimePercent, avgLatencyMs, p95LatencyMs, lastCheckedAt, latency]
+      properties:
+        range: { type: string, enum: [24h, 7d, 30d] }
+        checks: { type: integer, description: Checks in the range. }
+        uptimePercent:
+          type: [number, 'null']
+          description: Share of successful checks; null without checks.
+          example: 99.86
+        avgLatencyMs:
+          type: [integer, 'null']
+          description: Average response time of successful checks; null without any.
+        p95LatencyMs:
+          type: [integer, 'null']
+          description: 95th percentile response time of successful checks; null without any.
+        lastCheckedAt:
+          type: [string, 'null']
+          format: date-time
+          description: Time of the latest check, also outside the range.
+        latency:
+          type: array
+          items: { $ref: '#/components/schemas/LatencyPoint' }
+
+    LatencyPoint:
+      type: object
+      required: [time, checks, failedChecks, avgLatencyMs]
+      properties:
+        time: { type: string, format: date-time, description: Start of the bucket. }
+        checks: { type: integer }
+        failedChecks: { type: integer }
+        avgLatencyMs: { type: [integer, 'null'], description: Null when every check in the bucket failed. }
+
+    UptimeDay:
+      type: object
+      required: [date, checks, uptimePercent]
+      properties:
+        date: { type: string, format: date, example: '2026-10-12' }
+        checks: { type: integer }
+        uptimePercent: { type: number }
+
+    Incident:
+      type: object
+      required: [id, startedAt, resolvedAt, cause]
+      properties:
+        id: { type: integer, format: int64 }
+        startedAt: { type: string, format: date-time }
+        resolvedAt: { type: [string, 'null'], format: date-time, description: Null while the incident is ongoing. }
+        cause: { type: [string, 'null'], example: timed out after 10s }
 
     Error:
       type: object

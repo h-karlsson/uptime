@@ -2,62 +2,18 @@ package checker
 
 import (
 	"context"
-	"os"
 	"slices"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/h-karlsson/uptime/internal/store"
+	"github.com/h-karlsson/uptime/internal/testdb"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// newTestStore connects to TEST_DATABASE_URL and empties it. The tests are skipped without it.
-func newTestStore(t *testing.T) (*Store, *pgxpool.Pool) {
+func newTestStore(t *testing.T) (*Store, *pgxpool.Pool, int64) {
 	t.Helper()
-	url := os.Getenv("TEST_DATABASE_URL")
-	if url == "" {
-		t.Skip("set TEST_DATABASE_URL to run the Postgres integration tests")
-	}
-	ctx := context.Background()
-	pool, err := store.Open(ctx, url)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(pool.Close)
-	if name := pool.Config().ConnConfig.Database; !strings.HasSuffix(name, "_test") {
-		t.Fatalf("refusing to empty database %q: TEST_DATABASE_URL must point at a database ending in _test", name)
-	}
-	if err := store.Migrate(ctx, pool); err != nil {
-		t.Fatal(err)
-	}
-	exec(t, pool, "TRUNCATE users, monitors, incidents, checks RESTART IDENTITY CASCADE")
-	exec(t, pool, "INSERT INTO users (email, password_hash) VALUES ('checker@uptime.io', 'unused')")
-
-	checkerStore := NewStore(pool)
-	if err := checkerStore.EnsurePartitions(ctx, time.Now()); err != nil {
-		t.Fatal(err)
-	}
-	return checkerStore, pool
-}
-
-func exec(t *testing.T, pool *pgxpool.Pool, sql string, args ...any) {
-	t.Helper()
-	if _, err := pool.Exec(context.Background(), sql, args...); err != nil {
-		t.Fatalf("%s: %v", sql, err)
-	}
-}
-
-func createMonitor(t *testing.T, pool *pgxpool.Pool, url string, enabled bool) int64 {
-	t.Helper()
-	var id int64
-	err := pool.QueryRow(context.Background(),
-		"INSERT INTO monitors (user_id, name, url, enabled) VALUES (1, $1, $1, $2) RETURNING id", url, enabled,
-	).Scan(&id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return id
+	pool := testdb.Open(t)
+	return NewStore(pool), pool, testdb.CreateUser(t, pool, "checker@uptime.io")
 }
 
 func claimedIDs(targets []target) []int64 {
@@ -69,10 +25,10 @@ func claimedIDs(targets []target) []int64 {
 }
 
 func TestClaimDueSkipsLockedMonitors(t *testing.T) {
-	checkerStore, pool := newTestStore(t)
+	checkerStore, pool, userID := newTestStore(t)
 	ctx := context.Background()
 	for _, url := range []string{"https://a.example", "https://b.example", "https://c.example"} {
-		createMonitor(t, pool, url, true)
+		testdb.CreateMonitor(t, pool, userID, url)
 	}
 
 	// Another instance claims one monitor in a transaction it hasn't committed yet.
@@ -107,10 +63,11 @@ func TestClaimDueSkipsLockedMonitors(t *testing.T) {
 }
 
 func TestClaimDueSchedulesNextCheck(t *testing.T) {
-	checkerStore, pool := newTestStore(t)
+	checkerStore, pool, userID := newTestStore(t)
 	ctx := context.Background()
-	id := createMonitor(t, pool, "https://due.example", true)
-	createMonitor(t, pool, "https://paused.example", false)
+	id := testdb.CreateMonitor(t, pool, userID, "https://due.example")
+	paused := testdb.CreateMonitor(t, pool, userID, "https://paused.example")
+	testdb.Exec(t, pool, "UPDATE monitors SET enabled = false WHERE id = $1", paused)
 
 	claimed, err := checkerStore.ClaimDue(ctx, 10)
 	if err != nil {
@@ -131,9 +88,9 @@ func TestClaimDueSchedulesNextCheck(t *testing.T) {
 }
 
 func TestRecordTracksStatusAndIncidents(t *testing.T) {
-	checkerStore, pool := newTestStore(t)
+	checkerStore, pool, userID := newTestStore(t)
 	ctx := context.Background()
-	id := createMonitor(t, pool, "https://flaky.example", true)
+	id := testdb.CreateMonitor(t, pool, userID, "https://flaky.example")
 
 	record := func(ok bool) {
 		t.Helper()
@@ -189,38 +146,11 @@ func TestRecordTracksStatusAndIncidents(t *testing.T) {
 }
 
 func TestRecordIgnoresDeletedMonitor(t *testing.T) {
-	checkerStore, pool := newTestStore(t)
-	id := createMonitor(t, pool, "https://gone.example", true)
-	exec(t, pool, "DELETE FROM monitors WHERE id = $1", id)
+	checkerStore, pool, userID := newTestStore(t)
+	id := testdb.CreateMonitor(t, pool, userID, "https://gone.example")
+	testdb.Exec(t, pool, "DELETE FROM monitors WHERE id = $1", id)
 
 	if err := checkerStore.Record(context.Background(), id, result{checkedAt: time.Now(), ok: true}); err != nil {
 		t.Fatalf("recording a deleted monitor: %v", err)
-	}
-}
-
-func TestEnsurePartitionsIsIdempotent(t *testing.T) {
-	checkerStore, pool := newTestStore(t)
-	ctx := context.Background()
-	december := time.Date(2030, time.December, 15, 12, 0, 0, 0, time.UTC)
-
-	for range 2 {
-		if err := checkerStore.EnsurePartitions(ctx, december); err != nil {
-			t.Fatal(err)
-		}
-	}
-	var partitions []string
-	rows, err := pool.Query(ctx, "SELECT relname FROM pg_class WHERE relname IN ('checks_2030_12', 'checks_2031_01') ORDER BY relname")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			t.Fatal(err)
-		}
-		partitions = append(partitions, name)
-	}
-	if !slices.Equal(partitions, []string{"checks_2030_12", "checks_2031_01"}) {
-		t.Fatalf("partitions = %v, want December and the following January", partitions)
 	}
 }

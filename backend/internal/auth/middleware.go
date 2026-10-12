@@ -39,3 +39,8 @@ func CurrentUser(ctx context.Context) (user.User, error) {
 	}
 	return loggedIn, nil
 }
+
+func CurrentUserID(ctx context.Context) (int64, error) {
+	loggedIn, err := CurrentUser(ctx)
+	return loggedIn.ID, err
+}

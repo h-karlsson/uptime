@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 )
 
 // ClientError describes invalid input that can safely be explained to the client.
@@ -35,4 +36,10 @@ func ReadJSON(request *http.Request, destination any) error {
 		return &ClientError{Message: "Request body must contain exactly one JSON value"}
 	}
 	return nil
+}
+
+// PathID parses a numeric path value such as {id}; ok is false when it isn't a valid number.
+func PathID(request *http.Request, name string) (id int64, ok bool) {
+	id, err := strconv.ParseInt(request.PathValue(name), 10, 64)
+	return id, err == nil
 }

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/h-karlsson/uptime/internal/store"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -50,7 +51,7 @@ func (checker *Checker) Run(ctx context.Context) {
 	var partitionsCheckedAt time.Time
 	for {
 		if time.Since(partitionsCheckedAt) >= partitionCheckInterval {
-			if err := checker.store.EnsurePartitions(ctx, time.Now()); err != nil {
+			if err := store.EnsureCheckPartitions(ctx, checker.store.pool, time.Now()); err != nil {
 				slog.Error("ensure checks partitions", "error", err)
 			} else {
 				partitionsCheckedAt = time.Now()

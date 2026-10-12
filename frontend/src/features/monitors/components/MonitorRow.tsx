@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { Ellipsis, Pencil, Trash2 } from 'lucide-react'
 import type { Monitor } from '@/client'
 import { Button } from '@/components/ui/button'
@@ -28,7 +29,13 @@ export function MonitorRow({ monitor, onEdit, onDelete }: MonitorRowProps) {
   return (
     <li className="flex items-center gap-4 px-4 py-3">
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{monitor.name}</p>
+        <Link
+          to="/monitors/$monitorId"
+          params={{ monitorId: monitor.id }}
+          className="block truncate font-medium hover:underline"
+        >
+          {monitor.name}
+        </Link>
         <a
           href={monitor.url}
           target="_blank"
