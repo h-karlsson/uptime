@@ -5,6 +5,21 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  --animate-heartbeat: trace 1.6s linear infinite;
+  --animate-flatline: trace 2.4s linear infinite;
+
+  /* With pathLength 100 and dasharray "100 100", this draws the line in, then wipes it out. */
+  @keyframes trace {
+    from {
+      stroke-dashoffset: 100;
+    }
+    to {
+      stroke-dashoffset: -100;
+    }
+  }
+}
+
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: 'Geist Variable', sans-serif;
