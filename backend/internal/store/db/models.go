@@ -6,25 +6,23 @@ package db
 
 import (
 	"time"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Check struct {
 	MonitorID  int64
 	CheckedAt  time.Time
 	Ok         bool
-	StatusCode pgtype.Int4
-	LatencyMs  pgtype.Int4
-	Error      pgtype.Text
+	StatusCode *int32
+	LatencyMs  *int32
+	Error      *string
 }
 
 type Incident struct {
 	ID         int64
 	MonitorID  int64
 	StartedAt  time.Time
-	ResolvedAt pgtype.Timestamptz
-	Cause      pgtype.Text
+	ResolvedAt *time.Time
+	Cause      *string
 }
 
 type Monitor struct {

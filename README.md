@@ -67,6 +67,7 @@ Open http://localhost:8081. The Go API runs on port 8080, and Vite forwards `/ap
 |----------------|--------------------------------------------------------------------|
 | `DATABASE_URL` | `postgres://admin:password@localhost:5432/uptime?sslmode=disable` |
 | `HTTP_ADDR`    | `:8080`                                                            |
+| `CHECKER_WORKERS` | `10` (number of monitors checked in parallel)                   |
 
 The API is documented in [`api-docs/openapi.yaml`](api-docs/openapi.yaml).
 
@@ -95,6 +96,15 @@ npm run generate:api
 ## Checks
 
 In `backend`: `go vet ./...` and `go test ./...`.
+
+The Postgres integration tests (e.g. for the checker's `SKIP LOCKED` queue) run when `TEST_DATABASE_URL` points at a disposable database whose name ends in `_test`; they empty it first. With Docker Compose:
+
+```powershell
+docker compose exec postgres createdb -U admin uptime_test
+$env:TEST_DATABASE_URL = "postgres://admin:password@localhost:5432/uptime_test?sslmode=disable"
+go test ./...
+```
+
 In `frontend`: `npm run lint` and `npm run build`.
 
 CI runs the same checks on every push and pull request.
