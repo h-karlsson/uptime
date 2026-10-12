@@ -1,12 +1,11 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
 import { LogOut } from 'lucide-react'
 import { Logo } from '@/components/Logo'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { useLogout } from '@/features/auth/hooks/useLogout'
 import { meQueryOptions } from '@/features/auth/queries'
 
-// Layout for every page that requires login. This guard is only for UX; the API
-// itself rejects requests without a valid session.
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async ({ context, location }) => {
     const user = await context.queryClient.ensureQueryData(meQueryOptions)
@@ -29,6 +28,7 @@ function AuthenticatedLayout() {
           <Logo />
           <div className="flex items-center gap-3">
             <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span>
+            <ThemeToggle />
             <Button variant="ghost" size="sm" onClick={() => logout.mutate()} disabled={logout.isPending}>
               <LogOut />
               Log out

@@ -7,6 +7,7 @@ import (
 	customHttp "github.com/h-karlsson/uptime/internal/http"
 	"github.com/h-karlsson/uptime/internal/session"
 	"github.com/h-karlsson/uptime/internal/user"
+	"github.com/h-karlsson/uptime/internal/validation"
 )
 
 var errNotLoggedIn = &customHttp.ClientError{Message: "not logged in", Status: http.StatusUnauthorized}
@@ -21,7 +22,7 @@ func toClientError(err error) error {
 	case errors.Is(err, session.ErrInvalidSession):
 		return errNotLoggedIn
 	}
-	if validationError, ok := errors.AsType[*user.ValidationError](err); ok {
+	if validationError, ok := errors.AsType[*validation.Error](err); ok {
 		return &customHttp.ClientError{Message: validationError.Message}
 	}
 	return err

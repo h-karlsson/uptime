@@ -1,10 +1,10 @@
 import type { FormEvent } from 'react'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { SubmitButton } from '@/components/SubmitButton'
 import { useLogin } from '../hooks/useLogin'
 import { AuthCard } from './AuthCard'
 import { EmailSummary } from './EmailSummary'
-import { SubmitButton } from './SubmitButton'
 
 type PasswordStepProps = {
   email: string

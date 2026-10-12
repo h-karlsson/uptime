@@ -5,14 +5,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/h-karlsson/uptime/internal/pgerr"
 	"github.com/h-karlsson/uptime/internal/store/db"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
-
-// Postgres error code for a UNIQUE constraint violation.
-const uniqueViolation = "23505"
 
 type PostgresStore struct {
 	queries *db.Queries
@@ -25,8 +22,7 @@ func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore {
 func (store *PostgresStore) Create(ctx context.Context, email, passwordHash string) (User, error) {
 	row, err := store.queries.CreateUser(ctx, db.CreateUserParams{Email: email, PasswordHash: passwordHash})
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolation {
+		if pgerr.IsUniqueViolation(err, "users_email_key") {
 			return User{}, ErrEmailTaken
 		}
 		return User{}, fmt.Errorf("insert user: %w", err)

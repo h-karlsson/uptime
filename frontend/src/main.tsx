@@ -4,10 +4,12 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { createRoot } from 'react-dom/client'
 import { meQueryOptions } from '@/features/auth/queries'
 import { ApiError, setupApiClient } from '@/lib/api'
+import { syncThemeWithDocument } from '@/state/useThemeStore'
 import { routeTree } from './routeTree.gen'
 import './index.css'
 
 setupApiClient()
+syncThemeWithDocument()
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({ onError: handleUnauthorized }),

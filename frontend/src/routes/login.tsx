@@ -1,5 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { Logo } from '@/components/Logo'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { LoginFlow } from '@/features/auth/components/LoginFlow'
 import { meQueryOptions } from '@/features/auth/queries'
 import { safeRedirect } from '@/features/auth/redirect'
@@ -27,7 +28,10 @@ function LoginPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10">
+    <div className="relative flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="flex w-full max-w-sm flex-col gap-6">
         <Logo className="self-center" />
         <LoginFlow onAuthenticated={() => void navigate({ href: safeRedirect(search.redirect) })} />

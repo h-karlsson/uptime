@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { SubmitButton } from '@/components/SubmitButton'
 import { useRegister } from '../hooks/useRegister'
 import { AuthCard } from './AuthCard'
 import { EmailSummary } from './EmailSummary'
-import { SubmitButton } from './SubmitButton'
 
 // Matches the backend rule; the backend still validates, this just gives earlier feedback.
 const MIN_PASSWORD_LENGTH = 8

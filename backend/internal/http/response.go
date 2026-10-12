@@ -22,6 +22,10 @@ func FormatResponseToJson(responseWriter http.ResponseWriter, status int, data a
 }
 
 func HandleJSON[T any](handler func(*http.Request) (T, error)) http.HandlerFunc {
+	return HandleJSONStatus(http.StatusOK, handler)
+}
+
+func HandleJSONStatus[T any](status int, handler func(*http.Request) (T, error)) http.HandlerFunc {
 	return func(response http.ResponseWriter, request *http.Request) {
 		data, err := handler(request)
 		if err != nil {
@@ -29,7 +33,18 @@ func HandleJSON[T any](handler func(*http.Request) (T, error)) http.HandlerFunc 
 			return
 		}
 
-		FormatResponseToJson(response, http.StatusOK, data)
+		FormatResponseToJson(response, status, data)
+	}
+}
+
+func HandleNoContent(handler func(*http.Request) error) http.HandlerFunc {
+	return func(response http.ResponseWriter, request *http.Request) {
+		if err := handler(request); err != nil {
+			WriteError(response, err)
+			return
+		}
+
+		response.WriteHeader(http.StatusNoContent)
 	}
 }
 

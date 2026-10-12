@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	customHttp "github.com/h-karlsson/uptime/internal/http"
@@ -12,7 +13,7 @@ import (
 type contextKey struct{}
 
 // RequireUser responds 401 unless the request has a valid session cookie. Handlers behind
-// it get the logged-in user with UserFromContext.
+// it get the logged-in user with CurrentUser.
 func RequireUser(sessions *session.Service) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -21,13 +22,20 @@ func RequireUser(sessions *session.Service) func(http.Handler) http.Handler {
 				customHttp.WriteError(response, toClientError(err))
 				return
 			}
-			ctx := context.WithValue(request.Context(), contextKey{}, loggedIn)
-			next.ServeHTTP(response, request.WithContext(ctx))
+			next.ServeHTTP(response, request.WithContext(WithUser(request.Context(), loggedIn)))
 		})
 	}
 }
 
-func UserFromContext(ctx context.Context) (user.User, bool) {
+func WithUser(ctx context.Context, loggedIn user.User) context.Context {
+	return context.WithValue(ctx, contextKey{}, loggedIn)
+}
+
+// CurrentUser returns the logged-in user. It only fails when the route is missing RequireUser.
+func CurrentUser(ctx context.Context) (user.User, error) {
 	loggedIn, ok := ctx.Value(contextKey{}).(user.User)
-	return loggedIn, ok
+	if !ok {
+		return user.User{}, errors.New("no user in context; route is missing RequireUser")
+	}
+	return loggedIn, nil
 }

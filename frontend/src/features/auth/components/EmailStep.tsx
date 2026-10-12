@@ -1,9 +1,9 @@
 import type { FormEvent } from 'react'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { SubmitButton } from '@/components/SubmitButton'
 import { useCheckEmail } from '../hooks/useCheckEmail'
 import { AuthCard } from './AuthCard'
-import { SubmitButton } from './SubmitButton'
 
 type EmailStepProps = {
   defaultEmail: string

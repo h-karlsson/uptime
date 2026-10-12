@@ -12,6 +12,8 @@ tags:
   - name: Health
   - name: Auth
     description: Email-first sign in, registration, and sessions.
+  - name: Monitors
+    description: The logged-in user's monitors. Other users' monitors respond 404.
 
 paths:
   /api/health:
@@ -138,6 +140,114 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/InternalServerError' }
 
+  /api/monitors:
+    get:
+      tags: [Monitors]
+      operationId: listMonitors
+      summary: List monitors
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: The user's monitors, oldest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Monitor' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+    post:
+      tags: [Monitors]
+      operationId: createMonitor
+      summary: Create a monitor
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MonitorInput' }
+      responses:
+        '201':
+          description: The created monitor.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Monitor' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: The user already monitors this URL, or has reached the limit of 10 monitors.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                duplicateUrl: { value: { error: you already have a monitor for this url } }
+                limitReached: { value: { error: you can have at most 10 monitors } }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+
+  /api/monitors/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+    get:
+      tags: [Monitors]
+      operationId: getMonitor
+      summary: Get a monitor
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: The monitor.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Monitor' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/MonitorNotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+    put:
+      tags: [Monitors]
+      operationId: updateMonitor
+      summary: Replace a monitor's settings
+      description: Takes every editable field. The monitor is checked again right away.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MonitorInput' }
+      responses:
+        '200':
+          description: The updated monitor.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Monitor' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/MonitorNotFound' }
+        '409':
+          description: Another of the user's monitors already has this URL.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: you already have a monitor for this url }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+    delete:
+      tags: [Monitors]
+      operationId: deleteMonitor
+      summary: Delete a monitor
+      security:
+        - sessionCookie: []
+      responses:
+        '204':
+          description: Deleted.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/MonitorNotFound' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+
 components:
   securitySchemes:
     sessionCookie:
@@ -195,6 +305,48 @@ components:
         status: { type: string, enum: [ok, unavailable] }
         database: { type: string, enum: [up, down] }
 
+    Monitor:
+      type: object
+      required: [id, name, url, method, intervalSeconds, timeoutMs, expectedStatus, enabled, status, createdAt]
+      properties:
+        id: { type: integer, format: int64, example: 1 }
+        name: { type: string, example: Example }
+        url: { type: string, format: uri, example: 'https://example.com' }
+        method: { type: string, enum: [GET, HEAD] }
+        intervalSeconds: { type: integer, example: 60 }
+        timeoutMs: { type: integer, example: 10000 }
+        expectedStatus: { type: integer, example: 200 }
+        enabled: { type: boolean, description: False while the monitor is paused. }
+        status:
+          type: string
+          enum: [up, down, unknown]
+          description: Result of the latest checks; unknown until the monitor has been checked.
+        createdAt: { type: string, format: date-time }
+
+    MonitorInput:
+      type: object
+      additionalProperties: false
+      required: [name, url, method, intervalSeconds, timeoutMs, expectedStatus, enabled]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100, example: Example }
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: |
+            An http or https address, unique per user. Stored in canonical form (lowercase host,
+            "/" for an empty path, no fragment), so "https://Example.com" and "https://example.com/"
+            count as the same URL.
+          example: 'https://example.com/'
+        method:
+          type: string
+          enum: [GET, HEAD]
+          description: Case-insensitive; stored in uppercase.
+        intervalSeconds: { type: integer, minimum: 30, maximum: 86400, example: 60 }
+        timeoutMs: { type: integer, minimum: 1000, maximum: 30000, example: 10000 }
+        expectedStatus: { type: integer, minimum: 100, maximum: 599, example: 200 }
+        enabled: { type: boolean, example: true }
+
     Error:
       type: object
       required: [error]
@@ -213,6 +365,12 @@ components:
             invalidJson: { value: { error: 'Invalid JSON body: check syntax, field names, and field types' } }
             invalidEmail: { value: { error: email must be a valid address } }
             shortPassword: { value: { error: password must be at least 8 characters } }
+    MonitorNotFound:
+      description: No monitor with this id belongs to the logged-in user.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: monitor not found }
     Unauthorized:
       description: No valid session cookie.
       content:
