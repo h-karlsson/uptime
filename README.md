@@ -21,6 +21,8 @@ Requires only Docker:
 docker compose up -d --build
 ```
 
+Open http://localhost:3000. nginx serves the frontend and forwards `/api` to the backend.
+
 You can also start a subset of the services. Dependencies start automatically, so `backend` also starts `postgres`:
 
 ```powershell

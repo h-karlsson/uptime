@@ -29,5 +29,15 @@ services:
       postgres:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: ./frontend
+      additional_contexts:
+        api-docs: ./api-docs
+    ports:
+      - "3000:8080"
+    depends_on:
+      - backend
+
 volumes:
   postgres-data:
