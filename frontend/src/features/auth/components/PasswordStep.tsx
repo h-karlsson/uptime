@@ -3,7 +3,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { Input } from '@/components/ui/input'
 import { SubmitButton } from '@/components/SubmitButton'
 import { useLogin } from '../hooks/useLogin'
-import { AuthCard } from './AuthCard'
+import { AuthStep } from './AuthStep'
 import { EmailSummary } from './EmailSummary'
 
 type PasswordStepProps = {
@@ -22,7 +22,7 @@ export function PasswordStep({ email, onBack, onSuccess }: PasswordStepProps) {
   }
 
   return (
-    <AuthCard title="Welcome back" description={<EmailSummary email={email} onChange={onBack} />}>
+    <AuthStep title="Welcome back" description={<EmailSummary email={email} onChange={onBack} />}>
       <form onSubmit={handleSubmit}>
         {/* Lets password managers pair the saved password with this email. */}
         <input type="email" name="username" value={email} autoComplete="username" readOnly hidden />
@@ -43,6 +43,6 @@ export function PasswordStep({ email, onBack, onSuccess }: PasswordStepProps) {
           <SubmitButton pending={login.isPending}>Sign in</SubmitButton>
         </FieldGroup>
       </form>
-    </AuthCard>
+    </AuthStep>
   )
 }

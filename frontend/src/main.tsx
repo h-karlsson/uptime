@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { createRoot } from 'react-dom/client'
+import { RouteError } from '@/components/RouteError'
 import { meQueryOptions } from '@/features/auth/queries'
 import { ApiError, setupApiClient } from '@/lib/api'
 import { syncThemeWithDocument } from '@/state/useThemeStore'
@@ -10,6 +11,11 @@ import './index.css'
 
 setupApiClient()
 syncThemeWithDocument()
+
+if (import.meta.env.MODE === 'mock') {
+  const { startMockWorker } = await import('./mocks/browser')
+  await startMockWorker()
+}
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({ onError: handleUnauthorized }),
@@ -20,6 +26,7 @@ const router = createRouter({
   routeTree,
   context: { queryClient },
   defaultPreload: 'intent',
+  defaultErrorComponent: RouteError,
   scrollRestoration: true,
 })
 
@@ -29,8 +36,7 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// A 401 from any request while we think someone is logged in means the session expired:
-// forget the user and re-run the route guards, which send them to /login.
+
 function handleUnauthorized(error: Error) {
   const loggedIn = queryClient.getQueryData(meQueryOptions.queryKey)
   if (error instanceof ApiError && error.status === 401 && loggedIn) {

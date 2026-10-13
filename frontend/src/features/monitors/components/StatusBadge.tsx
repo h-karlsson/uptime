@@ -16,8 +16,7 @@ export function StatusBadge({ monitor }: { monitor: Monitor }) {
   const { label, trace, color, sweep } = STATUSES[monitor.enabled ? monitor.status : 'paused']
 
   return (
-    <Badge variant="outline" className="min-w-28 justify-start gap-1.5">
-      {/* Wrapped so Badge's icon sizing for direct svg children doesn't shrink the trace. */}
+    <Badge variant="outline" className="min-w-28 justify-start gap-1.5 flex">
       <span className={cn('flex', color)} aria-hidden>
         <svg
           viewBox="0 0 40 12"
@@ -32,7 +31,9 @@ export function StatusBadge({ monitor }: { monitor: Monitor }) {
           <path d={trace} pathLength={100} strokeDasharray="100 100" className={sweep ?? undefined} />
         </svg>
       </span>
-      {label}
+      <div className={"flex-1 text-center"}>
+          {label}
+      </div>
     </Badge>
   )
 }
