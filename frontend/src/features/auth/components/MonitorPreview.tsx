@@ -29,7 +29,7 @@ const MONITORS = [
   sample(5, 'Blog', 'https://blog.example.com/', { status: 'unknown' }),
 ]
 
-// A static copy of the monitors page, so visitors see the product before signing in.
+// A static copy of the monitors page for pre-auth viewing
 export function MonitorPreview() {
   return (
     <div inert className="flex max-w-xl flex-col gap-4">
