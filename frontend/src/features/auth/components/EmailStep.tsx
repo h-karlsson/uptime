@@ -3,7 +3,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { Input } from '@/components/ui/input'
 import { SubmitButton } from '@/components/SubmitButton'
 import { useCheckEmail } from '../hooks/useCheckEmail'
-import { AuthCard } from './AuthCard'
+import { AuthStep } from './AuthStep'
 
 type EmailStepProps = {
   defaultEmail: string
@@ -22,7 +22,7 @@ export function EmailStep({ defaultEmail, onContinue }: EmailStepProps) {
   }
 
   return (
-    <AuthCard title="Welcome to Uptime" description="Enter your email to sign in or create an account.">
+    <AuthStep title="Sign in to Uptime" description="Enter your email to sign in or create an account.">
       <form onSubmit={handleSubmit}>
         <FieldGroup>
           <Field data-invalid={checkEmail.isError}>
@@ -43,6 +43,6 @@ export function EmailStep({ defaultEmail, onContinue }: EmailStepProps) {
           <SubmitButton pending={checkEmail.isPending}>Continue</SubmitButton>
         </FieldGroup>
       </form>
-    </AuthCard>
+    </AuthStep>
   )
 }

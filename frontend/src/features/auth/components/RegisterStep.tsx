@@ -3,7 +3,7 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/c
 import { Input } from '@/components/ui/input'
 import { SubmitButton } from '@/components/SubmitButton'
 import { useRegister } from '../hooks/useRegister'
-import { AuthCard } from './AuthCard'
+import { AuthStep } from './AuthStep'
 import { EmailSummary } from './EmailSummary'
 
 // Matches the backend rule; the backend still validates, this just gives earlier feedback.
@@ -31,7 +31,7 @@ export function RegisterStep({ email, onBack, onSuccess }: RegisterStepProps) {
   }
 
   return (
-    <AuthCard
+    <AuthStep
       title="Create your account"
       description={
         <>
@@ -75,6 +75,6 @@ export function RegisterStep({ email, onBack, onSuccess }: RegisterStepProps) {
           <SubmitButton pending={register.isPending}>Create account</SubmitButton>
         </FieldGroup>
       </form>
-    </AuthCard>
+    </AuthStep>
   )
 }
