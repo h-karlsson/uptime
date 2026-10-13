@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "generate:api": "openapi-ts",
     "test": "npm run generate:api && vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "dev:mock": "npm run generate:api && vite --mode mock --port 8082"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",

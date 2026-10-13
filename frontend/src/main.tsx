@@ -11,6 +11,12 @@ import './index.css'
 setupApiClient()
 syncThemeWithDocument()
 
+// npm run dev:mock serves the API from src/mocks instead of the backend. Production builds drop this branch.
+if (import.meta.env.MODE === 'mock') {
+  const { startMockWorker } = await import('./mocks/browser')
+  await startMockWorker()
+}
+
 const queryClient = new QueryClient({
   queryCache: new QueryCache({ onError: handleUnauthorized }),
   mutationCache: new MutationCache({ onError: handleUnauthorized }),
@@ -29,8 +35,7 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// A 401 from any request while we think someone is logged in means the session expired:
-// forget the user and re-run the route guards, which send them to /login.
+
 function handleUnauthorized(error: Error) {
   const loggedIn = queryClient.getQueryData(meQueryOptions.queryKey)
   if (error instanceof ApiError && error.status === 401 && loggedIn) {

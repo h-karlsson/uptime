@@ -61,6 +61,15 @@ Requirements: Go (see `backend/go.mod`), Node.js 22+, Docker.
 
 Open http://localhost:8081. The Go API runs on port 8080, and Vite forwards `/api/*` to it during development.
 
+### Run the frontend without a backend
+
+```powershell
+cd frontend
+npm run dev:mock
+```
+
+Open http://localhost:8082. [MSW](https://mswjs.io) answers the API in the browser from `frontend/src/mocks`, with example monitors, statistics and incidents. Log in as `demo@uptime.io` / `demo1234` or register; changes last until you reload the page.
+
 ### Configuration
 
 | Variable       | Default                                                            |

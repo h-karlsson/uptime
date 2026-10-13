@@ -1,4 +1,4 @@
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, Pencil } from 'lucide-react'
@@ -8,9 +8,9 @@ import { LatencyChart } from '@/features/stats/components/LatencyChart'
 import { RangePicker } from '@/features/stats/components/RangePicker'
 import { StatCards } from '@/features/stats/components/StatCards'
 import { UptimeBars } from '@/features/stats/components/UptimeBars'
-import { daysQueryOptions, incidentsQueryOptions, statsQueryOptions } from '@/features/stats/queries'
+import { useMonitorStats } from '@/features/stats/hooks/useMonitorStats'
+import { daysQueryOptions, incidentsQueryOptions } from '@/features/stats/queries'
 import { cn } from '@/lib/utils'
-import { useStatsRangeStore } from '@/state/useStatsRangeStore'
 import { monitorsQueryOptions } from '../queries'
 import { formatInterval } from '../settings'
 import { MonitorFormDialog } from './MonitorFormDialog'
@@ -21,9 +21,7 @@ export function MonitorDetailPage({ monitorId }: { monitorId: number }) {
     ...monitorsQueryOptions,
     select: (monitors) => monitors.find((candidate) => candidate.id === monitorId),
   })
-  const range = useStatsRangeStore((state) => state.range)
-  const [changingRange, startTransition] = useTransition()
-  const { data: stats } = useSuspenseQuery(statsQueryOptions(monitorId, range))
+  const { data: stats, isPlaceholderData: changingRange } = useMonitorStats(monitorId)
   const { data: days } = useSuspenseQuery(daysQueryOptions(monitorId))
   const { data: incidents } = useSuspenseQuery(incidentsQueryOptions(monitorId))
   const [editing, setEditing] = useState(false)
@@ -50,7 +48,7 @@ export function MonitorDetailPage({ monitorId }: { monitorId: number }) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <RangePicker startTransition={startTransition} />
+          <RangePicker />
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
             <Pencil />
             Edit
@@ -58,10 +56,12 @@ export function MonitorDetailPage({ monitorId }: { monitorId: number }) {
         </div>
       </div>
 
-      <div className={cn('flex flex-col gap-6 transition-opacity', changingRange && 'opacity-60')}>
-        <StatCards stats={stats} />
-        <LatencyChart stats={stats} />
-      </div>
+      {stats && (
+        <div className={cn('flex flex-col gap-6 transition-opacity', changingRange && 'opacity-60')}>
+          <StatCards stats={stats} />
+          <LatencyChart stats={stats} />
+        </div>
+      )}
       <UptimeBars days={days} />
       <IncidentList incidents={incidents} />
 
