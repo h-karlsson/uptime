@@ -105,6 +105,6 @@ $env:TEST_DATABASE_URL = "postgres://admin:password@localhost:5432/uptime_test?s
 go test ./...
 ```
 
-In `frontend`: `npm run lint` and `npm run build`.
+In `frontend`: `npm run lint`, `npm test` (Vitest; `npm run test:watch` while developing) and `npm run build`.
 
 CI runs the same checks on every push and pull request.

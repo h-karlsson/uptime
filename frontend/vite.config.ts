@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import path from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
@@ -21,5 +22,11 @@ export default defineConfig({
         changeOrigin: true
       },
     },
+  },
+  test: {
+    environment: 'jsdom',
+    env: { TZ: 'UTC' },
+    unstubGlobals: true,
+    setupFiles: ['./src/test/setup.ts'],
   },
 })
