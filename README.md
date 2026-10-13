@@ -2,7 +2,7 @@
 
 A self-hostable uptime monitor: add URLs, the Go backend checks them on a schedule, and you get response-time graphs, incident history, and public status pages.
 
-**Stack:** Go, Postgres, React + TypeScript (Vite, TanStack Router, TanStack Query, Zustand, Tailwind, shadcn/ui).
+**Stack:** Go (Golang), Postgres, React + TypeScript (Vite, TanStack Router, TanStack Query, Zustand, Tailwind, shadcn/ui).
 
 ```text
 api-docs/     OpenAPI spec for the backend API
