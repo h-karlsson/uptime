@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { createRoot } from 'react-dom/client'
+import { RouteError } from '@/components/RouteError'
 import { meQueryOptions } from '@/features/auth/queries'
 import { ApiError, setupApiClient } from '@/lib/api'
 import { syncThemeWithDocument } from '@/state/useThemeStore'
@@ -11,7 +12,6 @@ import './index.css'
 setupApiClient()
 syncThemeWithDocument()
 
-// npm run dev:mock serves the API from src/mocks instead of the backend. Production builds drop this branch.
 if (import.meta.env.MODE === 'mock') {
   const { startMockWorker } = await import('./mocks/browser')
   await startMockWorker()
@@ -26,6 +26,7 @@ const router = createRouter({
   routeTree,
   context: { queryClient },
   defaultPreload: 'intent',
+  defaultErrorComponent: RouteError,
   scrollRestoration: true,
 })
 
