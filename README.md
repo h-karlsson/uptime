@@ -21,7 +21,7 @@ Requires only Docker:
 docker compose up -d --build
 ```
 
-Open http://localhost:3000. nginx serves the frontend and forwards `/api` to the backend.
+Open http://localhost:3000
 
 You can also start a subset of the services. Dependencies start automatically, so `backend` also starts `postgres`:
 
@@ -36,7 +36,12 @@ A demo account is created by the migrations: `demo@uptime.io` / `demo1234`.
 
 ### Run locally
 
-Requirements: Go (see `backend/go.mod`), Node.js 22+, Docker.
+Requirements: Docker, plus the Go and Node.js versions in [`mise.toml`](mise.toml). With [mise](https://mise.jdx.dev) they install and switch automatically; from the repository root:
+
+```powershell
+mise trust
+mise install
+```
 
 1. Start Postgres:
 
@@ -59,7 +64,7 @@ Requirements: Go (see `backend/go.mod`), Node.js 22+, Docker.
    npm run dev
    ```
 
-Open http://localhost:8081. The Go API runs on port 8080, and Vite forwards `/api/*` to it during development.
+Open http://localhost:8081. The Go API runs on port 8080.
 
 ### Run the frontend without a backend
 
