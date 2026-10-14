@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch'
 import { useUpdateMonitor } from '../hooks/useUpdateMonitor'
 import { formatInterval, toInput } from '../settings'
 import { StatusBadge } from './StatusBadge'
+import {cn} from "cn";
 
 type MonitorRowProps = {
   monitor: Monitor
@@ -26,8 +27,10 @@ export function MonitorRow({ monitor, onEdit, onDelete }: MonitorRowProps) {
     update.mutate({ id: monitor.id, input: { ...toInput(monitor), enabled } })
   }
 
+  const isDown = monitor.status === "down"
+
   return (
-    <li className="flex items-center gap-4 px-4 py-3">
+    <li className={cn("flex items-center gap-4 px-4 py-3", isDown && "bg-destructive/4 dark:bg-destructive/10")}>
       <div className="min-w-0 flex-1">
         <Link
           to="/monitors/$monitorId"
