@@ -41,7 +41,10 @@ Requirements: Docker, plus the Go and Node.js versions in [`mise.toml`](mise.tom
 ```powershell
 mise trust
 mise install
+lefthook install
 ```
+
+`lefthook install` sets up the Git hook that checks commit messages; see [Commit messages](#commit-messages).
 
 1. Start Postgres:
 
@@ -122,3 +125,9 @@ go test ./...
 In `frontend`: `npm run lint`, `npm test` (Vitest; `npm run test:watch` while developing) and `npm run build`.
 
 CI runs the same checks on every push and pull request.
+
+## Working on the project
+
+### Commit messages
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org). A [lefthook](https://lefthook.dev) hook rejects other messages; enable it once locally with `lefthook install` (installed by mise). CI checks the same rule.
