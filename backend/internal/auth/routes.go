@@ -15,5 +15,6 @@ func RegisterRoutes(router *http.ServeMux, users *user.Service, sessions *sessio
 	router.HandleFunc("POST /api/auth/register", Register(users, sessions))
 	router.HandleFunc("POST /api/auth/login", Login(users, sessions))
 	router.HandleFunc("POST /api/auth/logout", Logout(sessions))
+	router.Handle("POST /api/auth/logout-all", requireUser(LogoutAll(sessions)))
 	router.Handle("GET /api/auth/me", requireUser(customHttp.HandleJSON(Me)))
 }

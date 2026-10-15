@@ -12,13 +12,16 @@ import (
 	"time"
 
 	"github.com/h-karlsson/uptime/internal/checker"
+	"github.com/h-karlsson/uptime/internal/session"
 	"github.com/h-karlsson/uptime/internal/store"
 )
 
-// Matches compose.yaml. Override with DATABASE_URL outside local development.
 const defaultDatabaseURL = "postgres://admin:password@localhost:5432/uptime?sslmode=disable"
 
-const shutdownTimeout = 10 * time.Second
+const (
+	shutdownTimeout        = 10 * time.Second
+	sessionCleanupInterval = time.Hour
+)
 
 func main() {
 	if err := run(); err != nil {
@@ -28,7 +31,6 @@ func main() {
 }
 
 func run() error {
-	// Cancelled on Ctrl+C or SIGTERM (e.g. docker stop), which starts a graceful shutdown.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -42,9 +44,12 @@ func run() error {
 		return err
 	}
 
+	sessions := session.NewService(session.NewPostgresStore(pool))
+	go sessions.RunCleanup(ctx, sessionCleanupInterval)
+
 	server := &http.Server{
 		Addr:              getenv("HTTP_ADDR", ":8080"),
-		Handler:           RegisterRoutes(pool),
+		Handler:           RegisterRoutes(pool, sessions),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,

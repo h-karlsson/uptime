@@ -4,15 +4,17 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"log/slog"
 	"time"
-
-	"github.com/h-karlsson/uptime/internal/user"
 )
 
 type Store interface {
 	Create(ctx context.Context, tokenHash []byte, userID int64, expiresAt time.Time) error
-	GetUser(ctx context.Context, tokenHash []byte) (user.User, error)
+	Get(ctx context.Context, tokenHash []byte) (Session, error)
+	Extend(ctx context.Context, tokenHash []byte, expiresAt time.Time) error
 	Delete(ctx context.Context, tokenHash []byte) error
+	DeleteForUser(ctx context.Context, userID int64) error
+	DeleteExpired(ctx context.Context) (int64, error)
 }
 
 type Service struct {
@@ -33,16 +35,36 @@ func (service *Service) Create(ctx context.Context, userID int64) (string, time.
 	return token, expiresAt, nil
 }
 
-// User returns the logged-in user for a token, or ErrInvalidSession.
-func (service *Service) User(ctx context.Context, token string) (user.User, error) {
+func (service *Service) Get(ctx context.Context, token string) (Session, error) {
 	if token == "" {
-		return user.User{}, ErrInvalidSession
+		return Session{}, ErrInvalidSession
 	}
-	return service.store.GetUser(ctx, hashToken(token))
+	tokenHash := hashToken(token)
+	current, err := service.store.Get(ctx, tokenHash)
+	if err != nil {
+		return Session{}, err
+	}
+	if time.Until(current.ExpiresAt) >= renewBelow {
+		return current, nil
+	}
+
+	expiresAt := time.Now().Add(Duration)
+	if err := service.store.Extend(ctx, tokenHash, expiresAt); err != nil {
+		// The session is still valid, so the request goes ahead; the next one retries.
+		slog.Warn("renew session", "user", current.User.ID, "error", err)
+		return current, nil
+	}
+	current.ExpiresAt = expiresAt
+	current.Renewed = true
+	return current, nil
 }
 
 func (service *Service) Delete(ctx context.Context, token string) error {
 	return service.store.Delete(ctx, hashToken(token))
+}
+
+func (service *Service) DeleteForUser(ctx context.Context, userID int64) error {
+	return service.store.DeleteForUser(ctx, userID)
 }
 
 func hashToken(token string) []byte {

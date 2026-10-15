@@ -26,6 +26,19 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) er
 	return err
 }
 
+const deleteExpiredSessions = `-- name: DeleteExpiredSessions :execrows
+DELETE FROM sessions
+WHERE expires_at <= now()
+`
+
+func (q *Queries) DeleteExpiredSessions(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredSessions)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteSession = `-- name: DeleteSession :exec
 DELETE FROM sessions
 WHERE token_hash = $1
@@ -36,22 +49,54 @@ func (q *Queries) DeleteSession(ctx context.Context, tokenHash []byte) error {
 	return err
 }
 
-const getSessionUser = `-- name: GetSessionUser :one
-SELECT u.id, u.email, u.created_at
+const deleteUserSessions = `-- name: DeleteUserSessions :exec
+DELETE FROM sessions
+WHERE user_id = $1
+`
+
+func (q *Queries) DeleteUserSessions(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteUserSessions, userID)
+	return err
+}
+
+const extendSession = `-- name: ExtendSession :exec
+UPDATE sessions
+SET expires_at = $2
+WHERE token_hash = $1
+`
+
+type ExtendSessionParams struct {
+	TokenHash []byte
+	ExpiresAt time.Time
+}
+
+func (q *Queries) ExtendSession(ctx context.Context, arg ExtendSessionParams) error {
+	_, err := q.db.Exec(ctx, extendSession, arg.TokenHash, arg.ExpiresAt)
+	return err
+}
+
+const getSession = `-- name: GetSession :one
+SELECT u.id, u.email, u.created_at, s.expires_at
 FROM sessions s
 JOIN users u ON u.id = s.user_id
 WHERE s.token_hash = $1 AND s.expires_at > now()
 `
 
-type GetSessionUserRow struct {
+type GetSessionRow struct {
 	ID        int64
 	Email     string
 	CreatedAt time.Time
+	ExpiresAt time.Time
 }
 
-func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (GetSessionUserRow, error) {
-	row := q.db.QueryRow(ctx, getSessionUser, tokenHash)
-	var i GetSessionUserRow
-	err := row.Scan(&i.ID, &i.Email, &i.CreatedAt)
+func (q *Queries) GetSession(ctx context.Context, tokenHash []byte) (GetSessionRow, error) {
+	row := q.db.QueryRow(ctx, getSession, tokenHash)
+	var i GetSessionRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
 	return i, err
 }

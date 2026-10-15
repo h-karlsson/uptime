@@ -34,6 +34,12 @@ export const authHandlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
+  http.post('/api/auth/logout-all', () => {
+    if (!currentUser()) return notLoggedIn()
+    endSession()
+    return new HttpResponse(null, { status: 204 })
+  }),
+
   http.get('/api/auth/me', () => {
     const user = currentUser()
     return user ? HttpResponse.json(publicUser(user)) : notLoggedIn()

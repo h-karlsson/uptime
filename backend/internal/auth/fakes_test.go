@@ -12,7 +12,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// MinCost keeps the tests fast; the real service hashes with DefaultCost.
 var demoPasswordHash = func() string {
 	hash, err := bcrypt.GenerateFromPassword([]byte("demo1234"), bcrypt.MinCost)
 	if err != nil {
@@ -21,7 +20,6 @@ var demoPasswordHash = func() string {
 	return string(hash)
 }()
 
-// fakeUserStore stands in for Postgres; demo@uptime.io / demo1234 is already registered.
 type fakeUserStore struct {
 	users  map[string]user.User
 	hashes map[string]string
@@ -45,44 +43,81 @@ func (store *fakeUserStore) GetByEmail(_ context.Context, email string) (user.Us
 	return existing, store.hashes[email], nil
 }
 
-type fakeSessionStore struct {
-	users   *fakeUserStore
-	userIDs map[string]int64
+type fakeSession struct {
+	userID    int64
+	expiresAt time.Time
 }
 
-func (store *fakeSessionStore) Create(_ context.Context, tokenHash []byte, userID int64, _ time.Time) error {
-	store.userIDs[string(tokenHash)] = userID
+type fakeSessionStore struct {
+	users    *fakeUserStore
+	sessions map[string]fakeSession
+}
+
+func (store *fakeSessionStore) Create(_ context.Context, tokenHash []byte, userID int64, expiresAt time.Time) error {
+	store.sessions[string(tokenHash)] = fakeSession{userID: userID, expiresAt: expiresAt}
 	return nil
 }
 
-func (store *fakeSessionStore) GetUser(_ context.Context, tokenHash []byte) (user.User, error) {
-	userID, exists := store.userIDs[string(tokenHash)]
-	if !exists {
-		return user.User{}, session.ErrInvalidSession
+func (store *fakeSessionStore) Get(_ context.Context, tokenHash []byte) (session.Session, error) {
+	stored, exists := store.sessions[string(tokenHash)]
+	if !exists || !stored.expiresAt.After(time.Now()) {
+		return session.Session{}, session.ErrInvalidSession
 	}
 	for _, existing := range store.users.users {
-		if existing.ID == userID {
-			return existing, nil
+		if existing.ID == stored.userID {
+			return session.Session{User: existing, ExpiresAt: stored.expiresAt}, nil
 		}
 	}
-	return user.User{}, session.ErrInvalidSession
+	return session.Session{}, session.ErrInvalidSession
+}
+
+func (store *fakeSessionStore) Extend(_ context.Context, tokenHash []byte, expiresAt time.Time) error {
+	stored := store.sessions[string(tokenHash)]
+	stored.expiresAt = expiresAt
+	store.sessions[string(tokenHash)] = stored
+	return nil
 }
 
 func (store *fakeSessionStore) Delete(_ context.Context, tokenHash []byte) error {
-	delete(store.userIDs, string(tokenHash))
+	delete(store.sessions, string(tokenHash))
 	return nil
 }
 
+func (store *fakeSessionStore) DeleteForUser(_ context.Context, userID int64) error {
+	for tokenHash, stored := range store.sessions {
+		if stored.userID == userID {
+			delete(store.sessions, tokenHash)
+		}
+	}
+	return nil
+}
+
+func (store *fakeSessionStore) DeleteExpired(context.Context) (int64, error) {
+	return 0, nil
+}
+
+func (store *fakeSessionStore) ageSessions(left time.Duration) {
+	for tokenHash, stored := range store.sessions {
+		stored.expiresAt = time.Now().Add(left)
+		store.sessions[tokenHash] = stored
+	}
+}
+
 func newTestRouter() *http.ServeMux {
+	router, _ := newTestRouterWithSessions()
+	return router
+}
+
+func newTestRouterWithSessions() (*http.ServeMux, *fakeSessionStore) {
 	users := &fakeUserStore{
 		users:  map[string]user.User{"demo@uptime.io": {ID: 1, Email: "demo@uptime.io"}},
 		hashes: map[string]string{"demo@uptime.io": demoPasswordHash},
 	}
-	sessions := &fakeSessionStore{users: users, userIDs: map[string]int64{}}
+	sessions := &fakeSessionStore{users: users, sessions: map[string]fakeSession{}}
 
 	router := http.NewServeMux()
 	RegisterRoutes(router, user.NewService(users), session.NewService(sessions))
-	return router
+	return router, sessions
 }
 
 func send(router http.Handler, method, path, body string, cookies ...*http.Cookie) *httptest.ResponseRecorder {

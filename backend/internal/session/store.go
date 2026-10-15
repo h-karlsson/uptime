@@ -32,16 +32,26 @@ func (store *PostgresStore) Create(ctx context.Context, tokenHash []byte, userID
 	return nil
 }
 
-// GetUser returns the user of an unexpired session, or ErrInvalidSession.
-func (store *PostgresStore) GetUser(ctx context.Context, tokenHash []byte) (user.User, error) {
-	row, err := store.queries.GetSessionUser(ctx, tokenHash)
+func (store *PostgresStore) Get(ctx context.Context, tokenHash []byte) (Session, error) {
+	row, err := store.queries.GetSession(ctx, tokenHash)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return user.User{}, ErrInvalidSession
+		return Session{}, ErrInvalidSession
 	}
 	if err != nil {
-		return user.User{}, fmt.Errorf("get session user: %w", err)
+		return Session{}, fmt.Errorf("get session: %w", err)
 	}
-	return user.User{ID: row.ID, Email: row.Email, CreatedAt: row.CreatedAt}, nil
+	return Session{
+		User:      user.User{ID: row.ID, Email: row.Email, CreatedAt: row.CreatedAt},
+		ExpiresAt: row.ExpiresAt,
+	}, nil
+}
+
+func (store *PostgresStore) Extend(ctx context.Context, tokenHash []byte, expiresAt time.Time) error {
+	err := store.queries.ExtendSession(ctx, db.ExtendSessionParams{TokenHash: tokenHash, ExpiresAt: expiresAt})
+	if err != nil {
+		return fmt.Errorf("extend session: %w", err)
+	}
+	return nil
 }
 
 func (store *PostgresStore) Delete(ctx context.Context, tokenHash []byte) error {
@@ -49,4 +59,19 @@ func (store *PostgresStore) Delete(ctx context.Context, tokenHash []byte) error 
 		return fmt.Errorf("delete session: %w", err)
 	}
 	return nil
+}
+
+func (store *PostgresStore) DeleteForUser(ctx context.Context, userID int64) error {
+	if err := store.queries.DeleteUserSessions(ctx, userID); err != nil {
+		return fmt.Errorf("delete user sessions: %w", err)
+	}
+	return nil
+}
+
+func (store *PostgresStore) DeleteExpired(ctx context.Context) (int64, error) {
+	deleted, err := store.queries.DeleteExpiredSessions(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("delete expired sessions: %w", err)
+	}
+	return deleted, nil
 }

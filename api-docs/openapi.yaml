@@ -126,6 +126,24 @@ paths:
               schema: { type: string }
         '500': { $ref: '#/components/responses/InternalServerError' }
 
+  /api/auth/logout-all:
+    post:
+      tags: [Auth]
+      operationId: logoutAll
+      summary: Log out everywhere
+      description: Deletes every session of the logged-in user, including the current one, and clears the cookie.
+      security:
+        - sessionCookie: []
+      responses:
+        '204':
+          description: All sessions ended.
+          headers:
+            Set-Cookie:
+              description: Expires the `session` cookie.
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+
   /api/auth/me:
     get:
       tags: [Auth]
@@ -334,6 +352,9 @@ components:
       type: apiKey
       in: cookie
       name: session
+      description: >-
+        Sessions last 30 days. A request made with less than 15 days left extends the session
+        and re-sends the cookie with the new expiry.
 
   headers:
     SessionCookie:

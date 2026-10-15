@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/h-karlsson/uptime/internal/session"
 )
@@ -12,6 +13,11 @@ func startSession(ctx context.Context, response http.ResponseWriter, sessions *s
 	if err != nil {
 		return err
 	}
+	setSessionCookie(response, token, expiresAt)
+	return nil
+}
+
+func setSessionCookie(response http.ResponseWriter, token string, expiresAt time.Time) {
 	http.SetCookie(response, &http.Cookie{
 		Name:     session.CookieName,
 		Value:    token,
@@ -21,7 +27,6 @@ func startSession(ctx context.Context, response http.ResponseWriter, sessions *s
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
-	return nil
 }
 
 func clearSessionCookie(response http.ResponseWriter) {
