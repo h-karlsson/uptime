@@ -3,6 +3,7 @@
   "extends": ["config:recommended"],
   "timezone": "Europe/Stockholm",
   "schedule": ["before 7am on monday"],
+  "dependencyDashboard": false,
   "prConcurrentLimit": 5,
   "prHourlyLimit": 0,
   "semanticCommits": "enabled",
