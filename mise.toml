@@ -2,5 +2,5 @@
 # base images (golang:1.27-alpine, node:22-alpine), so update them together.
 [tools]
 go = "1.27"
-node = "22"
+node = "26"
 lefthook = "2"

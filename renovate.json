@@ -1,0 +1,37 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "Europe/Stockholm",
+  "schedule": ["before 7am on monday"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 0,
+  "semanticCommits": "enabled",
+  "labels": ["dependencies"],
+  "minimumReleaseAge": "3 days",
+  "lockFileMaintenance": { "enabled": true },
+  "postUpdateOptions": ["gomodTidy"],
+  "packageRules": [
+    {
+      "description": "Label frontend updates",
+      "matchFileNames": ["frontend/**"],
+      "addLabels": ["frontend"],
+      "reviewers": ["h-karlsson"]
+    },
+    {
+      "description": "Label backend updates",
+      "matchFileNames": ["backend/**"],
+      "addLabels": ["backend"],
+      "reviewers": ["h-karlsson"]
+    },
+    {
+      "description": "Update TanStack Router packages together",
+      "matchPackageNames": ["@tanstack/react-router", "@tanstack/react-router-devtools", "@tanstack/router-*"],
+      "groupName": "TanStack Router"
+    },
+    {
+      "description": "Update TanStack Query packages together",
+      "matchPackageNames": ["@tanstack/react-query", "@tanstack/react-query-devtools", "@tanstack/eslint-plugin-query"],
+      "groupName": "TanStack Query"
+    }
+  ]
+}
